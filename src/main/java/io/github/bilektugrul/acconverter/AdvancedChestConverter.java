@@ -50,12 +50,7 @@ public class AdvancedChestConverter extends JavaPlugin {
 
                 ChestPage page = new ChestPage(uuid, Integer.parseInt(pageId), convertedItems.toArray(new ItemStack[0]));
                 pages.add(page);
-                getServer().createPlayerProfile()
             }
-
-            String var3 = "SELECT (uuid,item) FROM chests";
-
-            //serializePages(pages.toArray(new ChestPage[0]))
 
             byte[] pageArray = serializePages(pages.toArray(new ChestPage[0]));
             String statementStr = "UPDATE chests SET pages=(?)" + " WHERE uuid='" + uuidKey + "';";
@@ -217,69 +212,8 @@ public class AdvancedChestConverter extends JavaPlugin {
         return var3;
     }
 
-    /*int var7 = var6.getInt("size");
-            var2.put(ChestAttribute.LOCATION, var6.getString("location"));
-            var2.put(ChestAttribute.SIZE, var7);
-            ChestType var8 = this.a.getType(var6.getString("chest_type"));
-            var2.put(ChestAttribute.PAGES, var8.getMysqlService().deserializePages(var6.getBytes("pages"), var7));
-            var2.put(ChestAttribute.CONFIG_TYPE, var6.getString("config_type"));
-            var2.put(ChestAttribute.CHEST_TYPE, var8);
-            var2.put(ChestAttribute.AUTOSELLS_STATUS, var6.getBoolean("autosells_status"));
-            var2.put(ChestAttribute.AUTOSELLS_SESSION_OWNER, var6.getString("autosells_session_owner"));
-            var2.put(ChestAttribute.MONEY, var6.getDouble("money"));
-            var2.put(ChestAttribute.WHO_PLACED, var6.getString("placed_by"));
-            var2.put(ChestAttribute.CONTAINER_TYPE, var6.getString("container_type"));
-            var2.put(ChestAttribute.DIRECTION, var6.getString("direction"));
-            var2.put(ChestAttribute.HOLOGRAM_ENABLED, var6.getBoolean("hologram_enabled"));*/
-
     @Override
     public void onDisable() {
         // Plugin shutdown logic
     }
 }
-
-    /*public byte[] serializePages(ChestPage<?>[] var1) {
-        try {
-            ByteArrayOutputStream var2 = new ByteArrayOutputStream();
-
-            try {
-                BukkitObjectOutputStream var3 = new BukkitObjectOutputStream(var2);
-
-                try {
-                    HashMap var4 = new HashMap();
-                    int var5 = ((Object[])(var1 = var1)).length;
-
-                    for(int var6 = 0; var6 < var5; ++var6) {
-                        Object var7 = ((Object[])var1)[var6];
-                        HashMap var8 = new HashMap();
-                        ItemStack[] var9 = ((NormalPage)var7).getItems();
-
-                        for(int var10 = 0; var10 < var9.length; ++var10) {
-                            ItemStack var11;
-                            if ((var11 = var9[var10]) != null) {
-                                var8.put(var10, var11);
-                            }
-                        }
-
-                        var4.put(((ChestPage)var7).getId(), var8);
-                    }
-
-                    var3.writeObject(var4);
-                    return var2.toByteArray();
-                } finally {
-                    if (Collections.singletonList(var3).get(0) != null) {
-                        var3.close();
-                    }
-
-                }
-            } finally {
-                if (Collections.singletonList(var2).get(0) != null) {
-                    var2.close();
-                }
-
-            }
-        } catch (Exception var20) {
-            var20.printStackTrace();
-            return null;
-        }
-    }*/
