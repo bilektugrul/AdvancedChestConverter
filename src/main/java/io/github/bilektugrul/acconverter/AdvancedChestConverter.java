@@ -102,8 +102,16 @@ public class AdvancedChestConverter extends JavaPlugin {
                 int size = var6.getInt("size");
                 UUID ownerUUID = UUID.fromString(var6.getString("uuid"));
                 Map<Integer, ChestPage> pages = deserializePages(var6.getBytes("pages"), size);
+                if (pages.isEmpty()) continue;
 
-                for (ChestPage page : pages.values()) {
+                Iterator<ChestPage> iterator = pages.values().iterator();
+                while (iterator.hasNext()) {
+                    ChestPage page = iterator.next();
+                    if (page == null) {
+                        iterator.remove();
+                        continue;
+                    }
+
                     List<String> pageItems = new ArrayList<>();
                     for (ItemStack item : page.getItems()) {
                         if (item == null) continue;
@@ -123,7 +131,7 @@ public class AdvancedChestConverter extends JavaPlugin {
                 file.set(page.ownerUUID.toString() + "." + page.id, page.getBase64Items());
             }
 
-            ConfigUtils.saveConfig(this, file, "converted");
+            ConfigUtils.saveConfig(this, file,  "converted");
 
         } catch (SQLException var5) {
             var5.printStackTrace();
