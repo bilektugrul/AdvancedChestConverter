@@ -14,24 +14,25 @@ import java.util.logging.Logger;
  * Created at 30.05.2020
  * @version 1.1
  */
-public class MysqlDatabase {
+public class MySQLDatabase {
 
     private HikariDataSource hikariDataSource;
     private boolean forceClose = false;
     private final Logger databaseLogger;
 
-    public MysqlDatabase(Logger logger) {
-        this.databaseLogger = logger;
-        databaseLogger.info("MySQL bağlantısı ayarlanıyor...");
-        configureConnPool("root", "", "jdbc:mysql://localhost:3306/test?useSSL=false&autoReConnect=true");
+    public MySQLDatabase(AdvancedChestConverter plugin) {
+        FileConfiguration config = plugin.getConfig();
+        this.databaseLogger = plugin.getLogger();
+        this.databaseLogger.info("Setting up MySQL...");
+        configureConnPool(config.getString("sql-username"), config.getString("sql-password"), "jdbc:mysql://localhost:3306/" + config.getString("db-name") + "?useSSL=false&autoReConnect=true");
 
         try (Connection connection = hikariDataSource.getConnection()) {
             if (connection == null) {
-                databaseLogger.severe("Veritabanına bağlanılamadı.");
+                databaseLogger.severe("Couldn't connect to database.");
                 forceClose = true;
             }
         } catch (SQLException e) {
-            databaseLogger.warning("Veritabanına bağlantıda sorun yaşanıyor. Eklenti devre dışı bırakılacak.");
+            databaseLogger.warning("Couldn't connect to database. Plugin will be disabled.");
             forceClose = true;
         }
     }

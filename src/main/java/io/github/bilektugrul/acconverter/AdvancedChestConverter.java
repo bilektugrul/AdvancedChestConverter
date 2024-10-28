@@ -1,6 +1,8 @@
 package io.github.bilektugrul.acconverter;
 
+import me.despical.commons.configuration.ConfigUtils;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.io.BukkitObjectInputStream;
@@ -16,33 +18,48 @@ import java.util.Base64;
 public class AdvancedChestConverter extends JavaPlugin {
 
     public String tableName;
-    public MysqlDatabase database;
+    public MySQLDatabase database;
+    public boolean convertRunning = false;
+    public int converted;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        this.tableName = getConfig().getString("table", "chest");
-        this.database = new MysqlDatabase(getLogger());
+        this.tableName = getConfig().getString("table-name", "chests");
+        this.database = new MySQLDatabase(this);
         if (getServer().getMinecraftVersion().equalsIgnoreCase("1.20.4")) {
             convertAllChestsToBase64();
         } else {
-            convertAllChestsToChestPage();
+            getServer().getScheduler().runTaskAsynchronously(this, this::convertAllChestsToChestPage);
+            getServer().getScheduler().runTaskTimer(this, (runnable) -> {
+                if (convertRunning) {
+                    getLogger().info("Convert still running...");
+                    getLogger().info("Converted player data: " + converted);
+                } else {
+                    runnable.cancel();
+                }
+            }, 0, 20);
         }
 
     }
 
     public void convertAllChestsToChestPage() {
-        System.out.println("1.21.1 starting...");
-        List<ChestPage> pages = new ArrayList<>();
+        getLogger().info("Starting 1.21.1...");
+        this.convertRunning = true;
 
-        for (String uuidKey : getConfig().getKeys(false)) {
+        FileConfiguration file = ConfigUtils.getConfig(this, "converted");
+
+        List<ChestPage> pages = new ArrayList<>();
+        Connection connection = database.getConnection();
+
+        for (String uuidKey : file.getKeys(false)) {
             UUID uuid = UUID.fromString(uuidKey);
-            ConfigurationSection section = getConfig().getConfigurationSection(uuidKey);
+            ConfigurationSection section = file.getConfigurationSection(uuidKey);
             if (section == null) continue;
 
             for (String pageId : section.getKeys(false)) {
-                List<String> base64Items = getConfig().getStringList(uuidKey + "." + pageId);
+                List<String> base64Items = file.getStringList(uuidKey + "." + pageId);
                 List<ItemStack> convertedItems = new ArrayList<>();
                 for (String base64Item : base64Items) {
                     convertedItems.add(deserializeFromBase64(base64Item));
@@ -53,19 +70,72 @@ public class AdvancedChestConverter extends JavaPlugin {
             }
 
             byte[] pageArray = serializePages(pages.toArray(new ChestPage[0]));
-            String statementStr = "UPDATE chests SET pages=(?)" + " WHERE uuid='" + uuidKey + "';";
-            Connection connection = database.getConnection();
+            String statementStr = "UPDATE " + tableName + " SET pages=(?)" + " WHERE uuid='" + uuidKey + "';";
+
             try {
                 PreparedStatement pstmt = connection.prepareStatement(statementStr);
                 InputStream inputStream = new ByteArrayInputStream(pageArray);
                 pstmt.setBinaryStream(1, inputStream);
                 pstmt.executeUpdate();
+                converted++;
             } catch (Exception exception) {
                 exception.printStackTrace();
             }
-
         }
 
+        getLogger().info("Convert done. Converted data: " + converted);
+        convertRunning = false;
+    }
+
+    public void convertAllChestsToBase64() {
+        getLogger().info("Starting 1.20.4...");
+
+        FileConfiguration file = ConfigUtils.getConfig(this, "converted");
+        String var3 = "SELECT * FROM " + tableName;
+        Connection connection = database.getConnection();
+
+        try {
+            List<ChestPage> base64Pages = new ArrayList<>();
+            Statement statement = connection.createStatement();
+            ResultSet var6 = statement.executeQuery(var3);
+            while (var6.next()) {
+                int size = var6.getInt("size");
+                UUID ownerUUID = UUID.fromString(var6.getString("uuid"));
+                Map<Integer, ChestPage> pages = deserializePages(var6.getBytes("pages"), size);
+
+                for (ChestPage page : pages.values()) {
+                    List<String> pageItems = new ArrayList<>();
+                    for (ItemStack item : page.getItems()) {
+                        if (item == null) continue;
+
+                        String itemBase64 = serializeToBase64(item);
+                        pageItems.add(itemBase64);
+                    }
+
+                    ChestPage newPage = new ChestPage(page.id, ownerUUID, pageItems);
+                    base64Pages.add(newPage);
+                }
+            }
+
+            for (ChestPage page : base64Pages) {
+                if (page.getBase64Items().isEmpty()) continue;
+
+                file.set(page.ownerUUID.toString() + "." + page.id, page.getBase64Items());
+            }
+
+            ConfigUtils.saveConfig(this, file, "converted");
+
+        } catch (SQLException var5) {
+            var5.printStackTrace();
+        }
+    }
+
+    public String serializeToBase64(ItemStack item) {
+        return Base64.getEncoder().encodeToString(item.serializeAsBytes());
+    }
+
+    public ItemStack deserializeFromBase64(String encoded) {
+        return ItemStack.deserializeBytes(Base64.getDecoder().decode(encoded));
     }
 
     public byte[] serializePages(ChestPage[] var1) {
@@ -110,56 +180,6 @@ public class AdvancedChestConverter extends JavaPlugin {
             var20.printStackTrace();
             return null;
         }
-    }
-
-    public void convertAllChestsToBase64() {
-        System.out.println("starting");
-
-        String var3 = "SELECT * FROM chests";
-        Connection connection = database.getConnection();
-
-        try {
-            List<ChestPage> base64Pages = new ArrayList<>();
-            Statement statement = connection.createStatement();
-            ResultSet var6 = statement.executeQuery(var3);
-            while (var6.next()) {
-                int size = var6.getInt("size");
-                UUID ownerUUID = UUID.fromString(var6.getString("uuid"));
-                Map<Integer, ChestPage> pages = deserializePages(var6.getBytes("pages"), size);
-
-                for (ChestPage page : pages.values()) {
-                    List<String> pageItems = new ArrayList<>();
-                    for (ItemStack item : page.getItems()) {
-                        if (item == null) continue;
-
-                        String itemBase64 = serializeToBase64(item);
-                        pageItems.add(itemBase64);
-                    }
-
-                    ChestPage newPage = new ChestPage(page.id, ownerUUID, pageItems);
-                    base64Pages.add(newPage);
-                }
-            }
-
-            for (ChestPage page : base64Pages) {
-                if (page.getBase64Items().isEmpty()) continue;
-
-                getConfig().set(page.ownerUUID.toString() + "." + page.id, page.getBase64Items());
-            }
-
-            saveConfig();
-
-        } catch (SQLException var5) {
-            var5.printStackTrace();
-        }
-    }
-
-    public String serializeToBase64(ItemStack item) {
-        return Base64.getEncoder().encodeToString(item.serializeAsBytes());
-    }
-
-    public ItemStack deserializeFromBase64(String encoded) {
-        return ItemStack.deserializeBytes(Base64.getDecoder().decode(encoded));
     }
 
     public Map<Integer, ChestPage> deserializePages(byte[] var1, int var2) {
@@ -214,6 +234,7 @@ public class AdvancedChestConverter extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        getServer().getScheduler().cancelTasks(this);
     }
+
 }
