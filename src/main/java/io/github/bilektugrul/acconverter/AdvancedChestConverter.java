@@ -10,7 +10,6 @@ import org.bukkit.util.io.BukkitObjectOutputStream;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
 import java.util.Base64;
@@ -54,7 +53,7 @@ public class AdvancedChestConverter extends JavaPlugin {
         Connection connection = database.getConnection();
 
         for (String uuidKey : file.getKeys(false)) {
-            UUID uuid = UUID.fromString(uuidKey);
+            UUID chestUUID = UUID.fromString(uuidKey);
             ConfigurationSection section = file.getConfigurationSection(uuidKey);
             if (section == null) continue;
 
@@ -65,7 +64,7 @@ public class AdvancedChestConverter extends JavaPlugin {
                     convertedItems.add(deserializeFromBase64(base64Item));
                 }
 
-                ChestPage page = new ChestPage(uuid, Integer.parseInt(pageId), convertedItems.toArray(new ItemStack[0]));
+                ChestPage page = new ChestPage(chestUUID, Integer.parseInt(pageId), convertedItems.toArray(new ItemStack[0]));
                 pages.add(page);
             }
 
@@ -95,16 +94,16 @@ public class AdvancedChestConverter extends JavaPlugin {
         getLogger().info("Starting 1.20.4...");
 
         FileConfiguration file = ConfigUtils.getConfig(this, "converted");
-        String var3 = "SELECT * FROM " + tableName;
+        String queryStr = "SELECT * FROM " + tableName;
         Connection connection = database.getConnection();
 
         try {
             List<ChestPage> base64Pages = new ArrayList<>();
             Statement statement = connection.createStatement();
-            ResultSet result = statement.executeQuery(var3);
+            ResultSet result = statement.executeQuery(queryStr);
             while (result.next()) {
                 int size = result.getInt("size");
-                UUID ownerUUID = UUID.fromString(result.getString("uuid"));
+                UUID chestUUID = UUID.fromString(result.getString("uuid"));
                 Map<Integer, ChestPage> pages = deserializePages(result.getBytes("pages"), size);
                 if (pages.isEmpty()) continue;
 
@@ -124,7 +123,7 @@ public class AdvancedChestConverter extends JavaPlugin {
                         pageItems.add(itemBase64);
                     }
 
-                    ChestPage newPage = new ChestPage(page.id, ownerUUID, pageItems);
+                    ChestPage newPage = new ChestPage(page.id, chestUUID, pageItems);
                     base64Pages.add(newPage);
                 }
             }
@@ -132,7 +131,7 @@ public class AdvancedChestConverter extends JavaPlugin {
             for (ChestPage page : base64Pages) {
                 if (page.getBase64Items().isEmpty()) continue;
 
-                file.set(page.ownerUUID.toString() + "." + page.id, page.getBase64Items());
+                file.set(page.chestUUID.toString() + "." + page.id, page.getBase64Items());
             }
 
             ConfigUtils.saveConfig(this, file,"converted");
@@ -152,7 +151,7 @@ public class AdvancedChestConverter extends JavaPlugin {
         return ItemStack.deserializeBytes(Base64.getDecoder().decode(encoded));
     }
 
-    public byte[] serializePages(ChestPage[] var1) {
+    public byte[] serializePages(ChestPage[] pages) {
         try {
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
@@ -162,7 +161,7 @@ public class AdvancedChestConverter extends JavaPlugin {
                 try {
                     HashMap var4 = new HashMap();
 
-                    for (ChestPage page : var1) {
+                    for (ChestPage page : pages) {
                         HashMap var8 = new HashMap();
                         ItemStack[] pageItems = page.getItems();
 
@@ -181,12 +180,16 @@ public class AdvancedChestConverter extends JavaPlugin {
                 } finally {
                     if (Collections.singletonList(bukkitObjectOutputStream).get(0) != null) {
                         bukkitObjectOutputStream.close();
+                    } else {
+                        getLogger().warning("bukkitObjectOutputStream did not close.");
                     }
 
                 }
             } finally {
                 if (Collections.singletonList(outputStream).get(0) != null) {
                     outputStream.close();
+                } else {
+                    getLogger().warning("outputStream did not close.");
                 }
 
             }
@@ -225,16 +228,21 @@ public class AdvancedChestConverter extends JavaPlugin {
 
                         var3.put(id, new ChestPage(id, items));
                     }
-                } catch (Exception var21) {
+                } catch (Exception exception) {
+                    exception.printStackTrace();
                 } finally {
                     if (Collections.singletonList(var5).get(0) != null) {
                         var5.close();
+                    } else {
+                        getLogger().warning("var5 did not close.");
                     }
 
                 }
             } finally {
                 if (Collections.singletonList(var25).get(0) != null) {
                     var25.close();
+                } else {
+                    getLogger().warning("var25 did not close.");
                 }
 
             }

@@ -8,24 +8,24 @@ import java.util.UUID;
 public class ChestPage {
 
     public int id;
-    public UUID ownerUUID;
+    public UUID chestUUID;
     public List<String> base64Items;
     public ItemStack[] items;
 
-    public ChestPage(int i, ItemStack[] items) {
-        this.id = i;
+    public ChestPage(int id, ItemStack[] items) {
+        this.id = id;
         this.items = items;
     }
 
-    public ChestPage(UUID ownerUUID, int i, ItemStack[] items) {
-        this.ownerUUID = ownerUUID;
-        this.id = i;
+    public ChestPage(UUID chestUIID, int id, ItemStack[] items) {
+        this.chestUUID = chestUIID;
+        this.id = id;
         this.items = items;
     }
 
-    public ChestPage(int i, UUID ownerUUID, List<String> base64Items) {
-        this.id = i;
-        this.ownerUUID = ownerUUID;
+    public ChestPage(int id, UUID chestUUID, List<String> base64Items) {
+        this.id = id;
+        this.chestUUID = chestUUID;
         this.base64Items = base64Items;
     }
 
