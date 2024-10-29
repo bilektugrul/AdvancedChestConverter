@@ -70,12 +70,16 @@ public class AdvancedChestConverter extends JavaPlugin {
             }
 
             byte[] pageArray = serializePages(pages.toArray(new ChestPage[0]));
+            if (pageArray == null) {
+                getLogger().warning(uuidKey + " pages are null");
+                continue;
+            }
+
             String statementStr = "UPDATE " + tableName + " SET pages=(?)" + " WHERE uuid='" + uuidKey + "';";
 
             try {
                 PreparedStatement pstmt = connection.prepareStatement(statementStr);
-                InputStream inputStream = new ByteArrayInputStream(pageArray);
-                pstmt.setBinaryStream(1, inputStream);
+                pstmt.setObject(1, pageArray);
                 pstmt.executeUpdate();
                 converted++;
             } catch (Exception exception) {
@@ -83,7 +87,7 @@ public class AdvancedChestConverter extends JavaPlugin {
             }
         }
 
-        getLogger().info("Convert done. Converted data: " + converted);
+        getLogger().info("1.21 Convert done. Converted data: " + converted);
         convertRunning = false;
     }
 
@@ -97,11 +101,11 @@ public class AdvancedChestConverter extends JavaPlugin {
         try {
             List<ChestPage> base64Pages = new ArrayList<>();
             Statement statement = connection.createStatement();
-            ResultSet var6 = statement.executeQuery(var3);
-            while (var6.next()) {
-                int size = var6.getInt("size");
-                UUID ownerUUID = UUID.fromString(var6.getString("uuid"));
-                Map<Integer, ChestPage> pages = deserializePages(var6.getBytes("pages"), size);
+            ResultSet result = statement.executeQuery(var3);
+            while (result.next()) {
+                int size = result.getInt("size");
+                UUID ownerUUID = UUID.fromString(result.getString("uuid"));
+                Map<Integer, ChestPage> pages = deserializePages(result.getBytes("pages"), size);
                 if (pages.isEmpty()) continue;
 
                 Iterator<ChestPage> iterator = pages.values().iterator();
@@ -131,11 +135,13 @@ public class AdvancedChestConverter extends JavaPlugin {
                 file.set(page.ownerUUID.toString() + "." + page.id, page.getBase64Items());
             }
 
-            ConfigUtils.saveConfig(this, file,  "converted");
+            ConfigUtils.saveConfig(this, file,"converted");
 
         } catch (SQLException var5) {
             var5.printStackTrace();
         }
+
+        getLogger().info("1.20.4 convert done.");
     }
 
     public String serializeToBase64(ItemStack item) {
@@ -202,23 +208,22 @@ public class AdvancedChestConverter extends JavaPlugin {
 
                 try {
                     Map var6;
-                    Iterator var7 = (var6 = (Map) var5.readObject()).keySet().iterator();
 
-                    while (var7.hasNext()) {
-                        int var8 = (Integer) var7.next();
-                        Map var9 = (Map) var6.get(var8);
+                    for (Object o : (var6 = (Map) var5.readObject()).keySet()) {
+                        int id = (Integer) o;
+                        Map var9 = (Map) var6.get(id);
                         int var10 = 45;
-                        if (var8 == var4 - 1 && var2 % 45 != 0) {
+                        if (id == var4 - 1 && var2 % 45 != 0) {
                             var10 = var2 - (int) Math.floor((double) var2 / 45.0) * 45;
                         }
 
-                        ItemStack[] var11 = new ItemStack[var10];
+                        ItemStack[] items = new ItemStack[var10];
 
                         for (int var12 = 0; var12 < var10; ++var12) {
-                            var11[var12] = (ItemStack) var9.get(var12);
+                            items[var12] = (ItemStack) var9.get(var12);
                         }
 
-                        var3.put(var8, new ChestPage(var8, var11));
+                        var3.put(id, new ChestPage(id, items));
                     }
                 } catch (Exception var21) {
                 } finally {
