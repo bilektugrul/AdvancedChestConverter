@@ -5,7 +5,7 @@ import org.bukkit.inventory.ItemStack;
 import java.util.List;
 import java.util.UUID;
 
-public class ChestPage {
+public class ChestPage<I> {
 
     public int id;
     public UUID chestUUID;
