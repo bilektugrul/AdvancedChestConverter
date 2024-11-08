@@ -68,12 +68,9 @@ public class AdvancedChestConverter extends JavaPlugin {
                 List<String> base64Items = file.getStringList(uuidKey + "." + pageId);
                 List<ItemStack> convertedItems = new ArrayList<>();
                 for (String base64Item : base64Items) {
-                    try {
-                        String isEmpty = strDeserializeFromBase64(base64Item);
-                        if (isEmpty.equalsIgnoreCase("empty page bro skip it")) {
-                            pages.add(new ChestPage<>(chestUUID, Integer.parseInt(pageId), new ItemStack[0]));
-                        }
-                    } catch (Exception ignored) {
+                    if (base64Item.equalsIgnoreCase("ZW1wdHkgcGFnZSBicm8gc2tpcCBpdA==")) {
+                        pages.add(new ChestPage<>(chestUUID, Integer.parseInt(pageId), new ItemStack[0]));
+                    } else {
                         ItemStack converted = deserializeFromBase64(base64Item);
                         if (converted == null) {
                             getLogger().warning("null item at " + uuidKey + " page " + pageId);
